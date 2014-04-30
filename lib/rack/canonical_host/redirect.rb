@@ -6,10 +6,10 @@ module Rack
       HTML_TEMPLATE = <<-HTML.gsub(/^\s+/, '')
         <!DOCTYPE html>
         <html lang="en-US">
-          <head><title>301 Moved Permanently</title></head>
+          <head><title>%{status} %{status_title}</title></head>
           <body>
-            <h1>Moved Permanently</h1>
-            <p>The document has moved <a href="%s">here</a>.</p>
+            <h1>%{status_title}</h1>
+            <p>The document has moved <a href="%{url}">here</a>.</p>
           </body>
         </html>
       HTML
@@ -20,6 +20,7 @@ module Rack
         @force_ssl = options[:force_ssl]
         @ignore = Array(options[:ignore])
         @if = Array(options[:if])
+        @status = (options[:status] || 301).to_i
       end
 
       def canonical?
@@ -28,10 +29,14 @@ module Rack
 
       def response
         headers = { 'Location' => new_url, 'Content-Type' => 'text/html' }
-        [301, headers, [HTML_TEMPLATE % new_url]]
+        [@status, headers, [HTML_TEMPLATE % { :url => new_url, :status => @status, :status_title => status_title }]]
       end
 
     private
+
+      def status_title
+        { 301 => 'Moved Permanently', 302 => 'Found' }[@status]
+      end
 
       def known?
         @host.nil? || request_uri.host == @host
